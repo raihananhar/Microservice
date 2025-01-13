@@ -1,0 +1,117 @@
+version: '3'
+
+services:
+  auth_service:
+    build:
+      context: ./auth_service  
+    ports:
+      - "8000:8000"  
+    environment:
+      - DATABASE_NAME=lelang_auth
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=admin
+      - DATABASE_HOST=auth_db  
+      - DATABASE_PORT=5432
+      - LELANG_SVC_HOST=http://lelangservice:8000
+      - BALANCE_SVC_HOST=http://balanceservice:8000  
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,lelang_service,balance_service,auth_service,balanceservice
+    depends_on:
+      - auth_db
+    networks:
+      lelang_network:
+        aliases:
+          - authservice 
+
+  lelang_service:
+    build:
+      context: ./lelang_service  
+    ports:
+      - "8001:8000"  
+    environment:
+      - DATABASE_NAME=lelang_svc
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=admin
+      - DATABASE_HOST=lelang_db  # Refers to the PostgreSQL service 
+      - DATABASE_PORT=5432
+      - AUTH_SVC_HOST=http://authservice:8000
+      - BALANCE_SVC_HOST=http://balanceservice:8000  # Change this line
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,lelang_service,balance_service,auth_service,balanceservice
+    depends_on:
+      - lelang_db
+    networks:
+      lelang_network:
+        aliases:
+          - lelangservice  
+
+  balance_service:
+    build:
+      context: ./balance_service  # Path to your balance_service Django project folder
+    ports:
+      - "8002:8000"  # Expose balance_service on port 8002
+    environment:
+      - DATABASE_NAME=balance_svc
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=admin
+      - DATABASE_HOST=balance_db  # Refers to the PostgreSQL service 
+      - DATABASE_PORT=5432
+      - LELANG_SVC_HOST=http://lelangservice:8000
+      - AUTH_SVC_HOST=http://authservice:8000
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,lelang_service,balance_service,auth_service,balanceservice
+    depends_on:
+      - balance_db
+    networks:
+      lelang_network:
+        aliases:
+          - balanceservice  # This creates a custom alias
+
+  auth_db:
+    image: postgres:14  # Choose the version you prefer
+    environment:
+      POSTGRES_DB: lelang_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5433:5432"  # Expose PostgreSQL on port 5433 for auth_service
+    networks:
+      - lelang_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  lelang_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: lelang_svc
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5434:5432"  # Expose PostgreSQL on port 5434 for lelang_service
+    networks:
+      - lelang_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  balance_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: balance_svc
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5435:5432"  # Expose PostgreSQL on port 5435 for balance_service
+    networks:
+      - lelang_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  lelang_network:
+    driver: bridge
