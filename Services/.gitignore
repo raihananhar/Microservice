@@ -1,0 +1,9 @@
+# Mengecualikan file di dalam folder auth_service
+auth_service/settings.py
+auth_service/authentication/views.py
+
+# Mengecualikan file di dalam folder balance_service
+balance_service/settings.py
+
+# Mengecualikan file di dalam folder lelang_service
+lelang_service/settings.py
